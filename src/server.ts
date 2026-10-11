@@ -3,6 +3,7 @@ import { AutomicClient, basicToken } from './automic/client.js';
 import type { AutomicConfig } from './config.js';
 import { createRedactor } from './security/redact.js';
 import type { ToolContext } from './tools/context.js';
+import { registerExecutionTools } from './tools/executions.js';
 import { registerObjectTools } from './tools/objects.js';
 import { createRunner } from './tools/result.js';
 import { registerSystemTools } from './tools/system.js';
@@ -43,5 +44,6 @@ export function createServer(config: AutomicConfig, deps: ServerDeps = {}): McpS
   );
   registerSystemTools(server, ctx, safe);
   registerObjectTools(server, ctx, safe);
+  registerExecutionTools(server, ctx, safe);
   return server;
 }
