@@ -8,7 +8,7 @@ export interface Redactor {
    * Two layers, with different guarantees:
    * 1. known secrets (configured password, Basic token, user:password): every occurrence is masked,
    *    whatever its length, in values AND in property names — this is the only promise of confidentiality;
-   * 2. heuristics (Basic/Bearer tokens, URL credentials, `password=...` pairs): best effort for
+   * 2. heuristics (Basic/Bearer tokens, URL credentials, `password=...` pairs, the keyword may sit inside an identifier: `DB_PASSWORD=`, `&DB_PASSWORD# =`): best effort for
    *    secrets the server does not know; an unknown secret without a recognizable shape passes.
    */
   text(value: string): string;
@@ -36,7 +36,7 @@ export function createRedactor(secrets: readonly string[]): Redactor {
       .replace(/\b(Basic|Bearer)\s+[A-Za-z0-9+/=._-]{8,}/gi, `$1 ${MASK}`)
       .replace(/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+@/gi, `$1${MASK}@`)
       .replace(
-        /\b(password|passwd|pwd|secret|token|api[_-]?key)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s,;&"']+)/gi,
+        /((?:password|passwd|pwd|secret|token|api[_-]?key)[\w#$]*)(\s*[=:]\s*)("[^"]*"|'[^']*'|[^\s,;&"']+)/gi,
         `$1$2${MASK}`,
       );
   };

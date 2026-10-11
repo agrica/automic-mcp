@@ -112,6 +112,27 @@ describe('loadConfig', () => {
     );
   });
 
+  it('refuses a name listed twice in the same list (any case), without echoing any value', () => {
+    const pin = `sha256:${'a'.repeat(64)}`;
+    const other = `sha256:${'b'.repeat(64)}`;
+    const message = problemsOf({
+      ...base,
+      AUTOMIC_CANCEL_ALLOWLIST: `MCP.SANDBOX.SLEEP.SCRI@${pin},mcp.sandbox.sleep.scri@${other}`,
+    });
+    expect(message).toContain('AUTOMIC_CANCEL_ALLOWLIST lists the same object more than once');
+    expect(message).not.toContain('SLEEP');
+    expect(message).not.toContain('a'.repeat(64));
+    expect(message).not.toContain('b'.repeat(64));
+  });
+
+  it('allows the same object in different lists', () => {
+    const pin = `sha256:${'a'.repeat(64)}`;
+    const entry = `MCP.SANDBOX.SLEEP.SCRI@${pin}`;
+    const config = loadConfig({ ...base, AUTOMIC_CANCEL_ALLOWLIST: entry, AUTOMIC_RESTART_ALLOWLIST: entry });
+    expect(config.writeScope.cancel).toHaveLength(1);
+    expect(config.writeScope.restart).toHaveLength(1);
+  });
+
   it('refuses the former pattern allowlist instead of ignoring it', () => {
     expect(problemsOf({ ...base, AUTOMIC_WRITE_ALLOWLIST: 'MCP.SANDBOX.*' })).toContain(
       'AUTOMIC_WRITE_ALLOWLIST is no longer supported',

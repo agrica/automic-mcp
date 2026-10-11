@@ -123,6 +123,10 @@ export function loadConfig(env: Record<string, string | undefined>): AutomicConf
       }
       parsed.push({ name: name.toUpperCase(), fingerprint });
     }
+    if (new Set(parsed.map((entry) => entry.name)).size !== parsed.length) {
+      problems.push(`${variable} lists the same object more than once`);
+      return [];
+    }
     return parsed;
   };
   const writeScope: WriteScope = {

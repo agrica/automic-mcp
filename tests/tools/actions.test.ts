@@ -216,6 +216,19 @@ describe('automic_execute_object', () => {
     expect(logs.join('\n')).not.toContain('value-not-logged');
   });
 
+  it('uses the canonical reviewed name for the definition read, the POST body and the reconciliation guide', async () => {
+    const lower = NOOP.toLowerCase();
+    const { fetch, calls } = fakeFetch(json(exportOf(NOOP)), json({ run_id: 7 }));
+    const { client } = await connect(fetch, WRITE);
+    await client.callTool({ name: 'automic_execute_object', arguments: { name: lower } });
+    expect(calls[0]!.url.pathname).toBe(`/ae/api/v1/400/objects/${NOOP}`);
+    expect(JSON.parse(calls[1]!.body!)).toMatchObject({ object_name: NOOP });
+    const unknown = fakeFetch(json(exportOf(NOOP)), networkError('ECONNRESET'));
+    const second = await connect(unknown.fetch, WRITE);
+    const result = await second.client.callTool({ name: 'automic_execute_object', arguments: { name: lower } });
+    expect(suggested(textOf(result)).name).toBe(NOOP);
+  });
+
   it.each([
     [
       'a changed definition (an activation was added)',
@@ -589,7 +602,7 @@ describe('automic_change_execution_status', () => {
       );
       expect(calls).toHaveLength(1);
       expect(phases(logs)).toEqual(['attempt', 'blocked:blocked']);
-      expect(audits(logs)[1]).toMatchObject({ error_kind: 'not_reviewed' });
+      expect(audits(logs)[1]).toMatchObject({ error_kind: 'aliased' });
     },
   );
 

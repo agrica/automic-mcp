@@ -30,7 +30,7 @@ const AUDIT_FAILED_NOTE = ' [audit log could not be written]';
 export const WRITE_OBJECT_TYPES: readonly string[] = ['JOBS', 'JOBF', 'SCRI'];
 
 /** Why a write was refused before any mutation (audit `error_kind` of a `blocked` event). */
-export type BlockReason = 'not_reviewed' | 'type_not_allowed' | 'not_exportable' | 'definition_changed';
+export type BlockReason = 'not_reviewed' | 'aliased' | 'type_not_allowed' | 'not_exportable' | 'definition_changed';
 
 export type WriteOutcome = 'success' | 'refused' | 'not_sent' | 'unknown' | 'blocked';
 
@@ -235,7 +235,7 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
     }
     let data: Record<string, unknown>;
     try {
-      data = (await ctx.client.get(`/objects/${seg(objectName)}`, ObjectExport)).data;
+      data = (await ctx.client.get(`/objects/${seg(reviewed.name)}`, ObjectExport)).data;
     } catch (err) {
       throw precheckFailed(audit, action, err);
     }
@@ -264,6 +264,7 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
           `${SCOPE_VARIABLES[action]}.`,
       );
     }
+    return reviewed;
   };
 
   const since = () => new Date(Date.now() - RECONCILE_MARGIN_MS).toISOString();
@@ -277,6 +278,8 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
         description:
           'Starts a reviewed object immediately. Only the exact objects of AUTOMIC_EXECUTE_ALLOWLIST whose ' +
           'definition still matches the reviewed fingerprint, of type JOBS, JOBF or SCRI. ' +
+          'An execution started with an alias different from the object name cannot then be cancelled or ' +
+          'restarted through this server. ' +
           'Never retried: on OUTCOME UNKNOWN, follow the reconciliation steps before any new attempt.',
         inputSchema: z
           .object({
@@ -298,19 +301,23 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
           input_keys: Object.keys(args.inputs ?? {}),
         });
         audit.log({ phase: 'attempt' });
-        await authorize('execute', args.name, audit);
+        const reviewed = await authorize('execute', args.name, audit);
         const requestedAt = since();
         audit.log({ phase: 'sent' });
         let runId: number;
         try {
-          const result = await ctx.client.post('/executions', buildExecutionBody(args), RunId);
+          const result = await ctx.client.post(
+            '/executions',
+            buildExecutionBody({ ...args, name: reviewed.name }),
+            RunId,
+          );
           if (result === undefined) throw new AutomicApiError('invalid_response', 200, 'empty answer');
           runId = result.run_id;
         } catch (err) {
           throw failure(
             err,
             audit,
-            reconcileGuide('launch', { name: args.name, account, since: requestedAt, until: until() }),
+            reconcileGuide('launch', { name: reviewed.name, account, since: requestedAt, until: until() }),
           );
         }
         audit.log({ phase: 'result', outcome: 'success', new_run_id: runId });
@@ -351,7 +358,7 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
             audit,
             action,
             execution.name,
-            'not_reviewed',
+            'aliased',
             `execution ${runId} runs under alias "${clip(execution.alias, 200)}", which differs from its object ` +
               `"${clip(execution.name, 200)}": aliased executions are refused (reviews pin object names only).`,
           );

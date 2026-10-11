@@ -26,6 +26,15 @@ describe('redactor.text — heuristics (best effort, unknown secrets)', () => {
     expect(redact.text('password=hunter2; pwd: "x y" token=abc')).toBe('password=***; pwd: *** token=***');
   });
 
+  it.each([
+    ['DB_PASSWORD=hunter2', 'DB_PASSWORD=***'],
+    ['API_TOKEN=abc123', 'API_TOKEN=***'],
+    ['login_pwd: hunter2', 'login_pwd: ***'],
+    [':SET &DB_PASSWORD# = "hunter2"', ':SET &DB_PASSWORD# = ***'],
+  ])('masks the value of a keyword inside an identifier: %s', (input, expected) => {
+    expect(redact.text(input)).toBe(expected);
+  });
+
   it('does not catch an unknown secret without a recognizable shape (documented limit)', () => {
     expect(redact.text('the code is hunter2')).toBe('the code is hunter2');
   });
