@@ -346,6 +346,16 @@ export function registerActionTools(server: McpServer, ctx: ToolContext, safe: R
         } catch (err) {
           throw precheckFailed(audit, action, err);
         }
+        if (execution.alias && execution.alias.toUpperCase() !== execution.name.toUpperCase()) {
+          throw block(
+            audit,
+            action,
+            execution.name,
+            'not_reviewed',
+            `execution ${runId} runs under alias "${clip(execution.alias, 200)}", which differs from its object ` +
+              `"${clip(execution.name, 200)}": aliased executions are refused (reviews pin object names only).`,
+          );
+        }
         await authorize(action, execution.name, audit, execution.type);
         const requestedAt = since();
         audit.log({ phase: 'sent', object: execution.name });

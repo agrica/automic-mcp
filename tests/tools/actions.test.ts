@@ -36,7 +36,7 @@ const WRITE = {
   enableWrite: true,
   writeScope: { execute: [reviewed(NOOP)], cancel: [reviewed(SLEEP)], restart: [reviewed(SLEEP)] },
 };
-const sandboxRun = { ...executionList.data[0]!, run_id: 42, name: SLEEP, type: 'SCRI' };
+const sandboxRun = { ...executionList.data[0]!, run_id: 42, name: SLEEP, alias: SLEEP, type: 'SCRI' };
 const audits = (logs: string[]) => logs.map((line) => JSON.parse(line) as Record<string, unknown>);
 const phases = (logs: string[]) =>
   audits(logs).map((event) => `${event.phase}${event.outcome ? `:${event.outcome}` : ''}`);
@@ -558,7 +558,7 @@ describe('automic_change_execution_status', () => {
   });
 
   it('does not accept a SCRI for its type: an unreviewed activator script is refused before any POST', async () => {
-    const activator = { ...sandboxRun, name: 'MCP.SANDBOX.ACTIVATOR.SCRI' };
+    const activator = { ...sandboxRun, name: 'MCP.SANDBOX.ACTIVATOR.SCRI', alias: 'MCP.SANDBOX.ACTIVATOR.SCRI' };
     const { fetch, calls } = fakeFetch(json(activator));
     const { client, logs } = await connect(fetch, WRITE);
     const result = await client.callTool({
@@ -571,6 +571,41 @@ describe('automic_change_execution_status', () => {
     );
     expect(posts(calls)).toHaveLength(0);
     expect(audits(logs)[1]).toMatchObject({ error_kind: 'not_reviewed' });
+  });
+
+  it.each(['cancel', 'restart'] as const)(
+    'refuses to %s an aliased execution before any definition read or POST',
+    async (action) => {
+      const { fetch, calls } = fakeFetch(json({ ...sandboxRun, alias: 'OTHER.ALIAS' }));
+      const { client, logs } = await connect(fetch, WRITE);
+      const result = await client.callTool({
+        name: 'automic_change_execution_status',
+        arguments: { runId: 42, action },
+      });
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toBe(
+        `NOT APPLIED: execution 42 runs under alias "OTHER.ALIAS", which differs from its object "${SLEEP}": ` +
+          'aliased executions are refused (reviews pin object names only). No status change was sent.',
+      );
+      expect(calls).toHaveLength(1);
+      expect(phases(logs)).toEqual(['attempt', 'blocked:blocked']);
+      expect(audits(logs)[1]).toMatchObject({ error_kind: 'not_reviewed' });
+    },
+  );
+
+  it('does not refuse an execution whose alias equals its name (any case)', async () => {
+    const { fetch, calls } = fakeFetch(
+      json({ ...sandboxRun, alias: SLEEP.toLowerCase() }),
+      json(exportOf(SLEEP)),
+      new Response('', { status: 200 }),
+    );
+    const { client } = await connect(fetch, WRITE);
+    const result = await client.callTool({
+      name: 'automic_change_execution_status',
+      arguments: { runId: 42, action: 'cancel' },
+    });
+    expect(result.isError).toBeFalsy();
+    expect(posts(calls)).toHaveLength(1);
   });
 
   it('keeps the scopes separate: reviewed for cancel does not authorize restart', async () => {
