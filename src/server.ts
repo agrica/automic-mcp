@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { AutomicClient, basicToken } from './automic/client.js';
 import type { AutomicConfig } from './config.js';
 import { createRedactor } from './security/redact.js';
+import { registerActionTools } from './tools/actions.js';
 import type { ToolContext } from './tools/context.js';
 import { registerExecutionTools } from './tools/executions.js';
 import { registerObjectTools } from './tools/objects.js';
@@ -45,5 +46,6 @@ export function createServer(config: AutomicConfig, deps: ServerDeps = {}): McpS
   registerSystemTools(server, ctx, safe);
   registerObjectTools(server, ctx, safe);
   registerExecutionTools(server, ctx, safe);
+  if (config.enableWrite) registerActionTools(server, ctx, safe);
   return server;
 }
