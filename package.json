@@ -22,7 +22,7 @@
     "test": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "npm run build && vitest run --project e2e",
-    "lint:workflows": "node scripts/validate-yaml.mjs .github/workflows/ci.yml .github/dependabot.yml"
+    "lint:workflows": "node scripts/validate-yaml.mjs .github/workflows/ci.yml .github/workflows/release.yml .github/dependabot.yml"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",

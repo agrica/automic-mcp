@@ -144,4 +144,16 @@ npm run lint           # Biome
 npm run lint:workflows # YAML strict (actionlint s'exécute en CI)
 ```
 
+### Release
+
+Pousser un tag `vX.Y.Z` déclenche `.github/workflows/release.yml` : le tag doit égaler la version de `package.json` et de `src/version.ts`, puis lint, typecheck, tests, e2e, et une release GitHub avec notes générées et l'archive `npm pack` en pièce jointe. Un tag avec suffixe (`v1.0.0-rc.1`) produit une pré-release.
+
+```bash
+npm version patch --no-git-tag-version   # met à jour package.json et package-lock.json
+# reporter la même version dans src/version.ts, puis :
+git commit -am "chore: release vX.Y.Z"
+git tag vX.Y.Z
+git push origin main vX.Y.Z
+```
+
 Référence d'API : `docs/reference/ae-rest-24.4.json` (provenance dans `docs/reference/PROVENANCE.md`).
