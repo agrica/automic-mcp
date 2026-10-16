@@ -1,6 +1,6 @@
 {
   "name": "@agrica/automic-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for the Automic Automation (AE) REST API v1",
   "private": true,
   "license": "UNLICENSED",
