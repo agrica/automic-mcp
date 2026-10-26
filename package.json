@@ -25,7 +25,7 @@
     "lint:workflows": "node scripts/validate-yaml.mjs .github/workflows/ci.yml .github/workflows/release.yml .github/dependabot.yml"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.3.1",
+    "@modelcontextprotocol/server": "2.4.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
